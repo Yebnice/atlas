@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b1020">
+  <title>Atlas Trading OS · Admin Security</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<div class="ambient ambient-a"></div><div class="ambient ambient-b"></div><div class="grid-noise"></div>
+<div class="app-shell">
+<aside class="sidebar">
+  <div class="brand"><div class="brand-mark">AI</div><div><strong>Atlas</strong><span>Trading OS</span></div></div>
+  <nav>
+    <a class="active" href="#overview"><span>⌂</span>Overview</a>
+    <a href="#strategy"><span>◈</span>Strategy</a>
+    <a href="#risk"><span>◇</span>Risk control</a>
+    <a href="#withdrawals"><span>↗</span>Withdrawals</a>
+    <a href="#executions"><span>≋</span>Executions</a>
+    <a href="#security"><span>▣</span>Security</a>
+  </nav>
+  <div class="sidebar-foot"><span class="pulse-dot"></span><div><b>Protected mode</b><small>Fail-closed controls active</small></div></div>
+</aside>
+<div class="workspace">
+<header class="topbar">
+  <div>
+    <div class="eyebrow">AI TRADING CONSOLE · PRODUCTION HARDENED</div>
+    <h1>Signal <span>→</span> Risk <span>→</span> Execution</h1>
+    <p class="muted">A calm command center for signal, risk, execution, and treasury operations.</p>
+  </div>
+  
+  <div class="topbar-actions"><button class="icon-btn mobile-nav" onclick="document.body.classList.toggle('nav-open')">☰</button><div class="live-indicator"><span class="pulse-dot"></span><span id="mode">CONNECTING</span></div><button class="avatar">A</button></div>
+</header>
+
+<main>
+<section id="overview" class="toolbar panel command-bar">
+  <div class="field"><label>Admin email</label><input id="adminEmail" type="email" autocomplete="username" placeholder="admin@example.com"></div>
+  <div class="field"><label>Admin password</label><input id="adminPassword" type="password" autocomplete="current-password" placeholder="Supabase Auth password"></div>
+  <button onclick="adminLogin()">Sign in</button>
+  <button onclick="adminEnroll()">Enroll Google Authenticator</button>
+  <div id="adminMfaBox" class="field" style="display:none"><label>Authenticator code</label><input id="adminMfaCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code"></div>
+  <button id="adminMfaVerifyBtn" style="display:none" onclick="adminMfaVerify()">Verify Authenticator</button>
+  <span id="authState" class="muted">Production admin access requires Google Authenticator (TOTP).</span>
+</section>
+
+<section class="grid cards kpi-grid">
+  <div class="card metric-card"><span>Equity</span><strong id="equity">—</strong><small id="pnl">Realized — · Unrealized —</small></div>
+  <div class="card metric-card"><span>Drawdown</span><strong id="dd">—</strong><small id="daily">Daily loss —</small></div>
+  <div class="card metric-card"><span>Engine</span><strong id="engine">—</strong><small id="live">Live switch —</small></div>
+  <div class="card metric-card"><span>Safety</span><strong id="kill">—</strong><small id="positions">Positions —</small></div>
+</section>
+
+<section class="grid two" id="strategy">
+<div class="panel">
+  <div class="section-head"><div><div class="eyebrow">MARKET & MODEL</div><h2>Strategy workstation</h2></div></div>
+  <div class="formgrid">
+    <label>Asset<select id="asset"><option value="crypto">Crypto</option><option value="forex">FX</option></select></label>
+    <label>Symbol<input id="symbol" value="BTC/USDT:USDT"></label>
+    <label>Exchange<input id="exchange" value="bybit"></label>
+    <label>Timeframe<select id="tf"><option>1h</option><option>4h</option><option>1d</option></select></label>
+    <label>History days<input id="days" type="number" min="30" max="1500" value="365"></label>
+    <label>Folds<input id="folds" type="number" min="2" max="10" value="5"></label>
+  </div>
+  <div class="actions">
+    <button onclick="train()">Train walk-forward model</button>
+    <button onclick="backtest()">Run AI backtest</button>
+    <button onclick="strategyBacktest()">Run strategy ensemble backtest</button>
+    <button onclick="backtestAll()">Backtest all strategies + AI</button>
+    <button onclick="aiReview()">AI market review</button>
+    <button onclick="paperSignals()">Test validated strategies live (paper)</button>
+    <button onclick="signal()">Get AI signal</button>
+    <button onclick="strategySignal()">Get strategy signal</button>
+    <button onclick="paperStep()">Execute paper step</button>
+  </div>
+  <div class="strategy-badges"><span class="tag">Trend</span><span class="tag">Momentum</span><span class="tag">Breakout</span><span class="tag">Mean reversion</span><span class="tag">Volatility target</span></div><pre id="output">Ready.</pre>
+</div>
+
+<div class="panel risk-panel" id="risk">
+  <div class="section-head"><div><div class="eyebrow">RISK & LIVE CONTROL</div><h2>Fail-closed control plane</h2></div></div>
+  <div class="risk-grid">
+    <div><span>Max DD</span><b>{{ "%.1f"|format(settings.max_drawdown*100) }}%</b></div>
+    <div><span>Daily loss</span><b>{{ "%.1f"|format(settings.daily_loss_limit*100) }}%</b></div>
+    <div><span>Max leverage</span><b>{{ settings.max_leverage }}×</b></div>
+    <div><span>Max exposure</span><b>${{ "%.0f"|format(settings.max_total_exposure_usd) }}</b></div>
+    <div><span>Paper default</span><b>{{ "ON" if settings.paper_trading else "OFF" }}</b></div>
+    <div><span>Sandbox</span><b>{{ "ON" if settings.broker_sandbox else "OFF" }}</b></div>
+  </div>
+  <div class="actions">
+    <button class="danger" onclick="halt()">HALT + CANCEL OPEN ORDERS</button>
+    <button onclick="resetRisk()">Reset halt (keeps live OFF)</button>
+    <button onclick="disableLive()">Force paper mode</button>
+  </div>
+  <div class="warning">Live trading requires explicit production flags, non-sandbox broker credentials, single-worker execution, matching confirmation text, and an exchange-supported attached stop.</div>
+</div>
+</section>
+
+<section class="panel" id="commercial" style="margin-bottom:18px"><div class="section-head"><div><div class="eyebrow">COMMERCIAL INTELLIGENCE</div><h2>Atlas margin</h2><p class="muted">Subscription revenue minus operating costs and referral commissions. Trading customer balances are excluded.</p></div><button onclick="loadMargin()">Refresh margin</button></div><div class="grid cards mini-cards"><div class="card"><span>Subscription revenue</span><strong id="marginRevenue">—</strong></div><div class="card"><span>Operating costs</span><strong id="marginCosts">—</strong></div><div class="card"><span>Referral commissions</span><strong id="marginRef">—</strong></div><div class="card"><span>Contribution margin</span><strong id="marginPct">—</strong><small id="marginProfit">—</small></div></div></section>
+<section class="panel withdrawal-panel" id="withdrawals">
+  <div class="section-head"><div><div class="eyebrow">ADMIN PAYOUT CONTROL</div><h2>Withdrawal approvals</h2><p class="muted">Approval and execution are separate controls. A release operator executes the configured provider; unknown outcomes require reconciliation.</p></div><button onclick="loadWithdrawals()">Refresh queue</button></div>
+  <div class="grid cards mini-cards">
+    <div class="card"><span>Pending approval</span><strong id="wdPending">—</strong><small id="wdPendingAmount">—</small></div>
+    <div class="card"><span>Approved</span><strong id="wdApproved">—</strong><small id="wdApprovedAmount">Awaiting release</small></div>
+    <div class="card"><span>In flight</span><strong id="wdInFlight">—</strong><small>Submitted / unknown</small></div>
+    <div class="card"><span>Rejected</span><strong id="wdRejected">—</strong><small>Funds returned</small></div>
+  </div>
+  <div class="formgrid admin-form">
+    <label>Admin ID<input id="adminId" placeholder="e.g. admin-01"></label><label>Approver token<input id="approverToken" type="password" placeholder="Separate approval secret"></label>
+    <label>Release operator<input id="releaseId" placeholder="e.g. release-01"></label><label>Release token<input id="releaseToken" type="password" placeholder="Separate execution secret"></label>
+    <label>Local signature<input id="releaseSignature" placeholder="Base64 Ed25519 signature (if required)"></label>
+    <label>Filter<select id="wdFilter" onchange="loadWithdrawals()"><option>PENDING</option><option>PARTIALLY_APPROVED</option><option>APPROVED</option><option>SUBMITTED</option><option>UNKNOWN</option><option>REJECTED</option><option>ALL</option></select></label>
+  </div>
+  <div class="table-wrap"><table><thead><tr><th>Request</th><th>Customer</th><th>Amount</th><th>Destination</th><th>Risk</th><th>Approvals</th><th>Status</th><th>Action</th></tr></thead><tbody id="withdrawals"></tbody></table></div>
+</section>
+
+<section class="panel" id="security">
+  <div class="section-head"><div><div class="eyebrow">ADMIN SECURITY</div><h2>Roles & authorization</h2><p class="muted">Server-side roles control custody, risk and administrative mutations. UI visibility is not the security boundary.</p></div><button onclick="loadRoles()">Refresh roles</button></div>
+  <div class="formgrid admin-form">
+    <label>Supabase user UUID<input id="roleUserId" placeholder="auth user UUID"></label>
+    <label>Role<select id="roleName"><option>READ_ONLY</option><option>OPERATIONS</option><option>RISK_OFFICER</option><option>TREASURY</option><option>COMPLIANCE</option><option>ADMINISTRATOR</option></select></label>
+    <label>Active<select id="roleActive"><option value="true">Yes</option><option value="false">No</option></select></label>
+  </div>
+  <div class="actions"><button onclick="saveRole()">Save role</button></div>
+  <div class="table-wrap"><table><thead><tr><th>User</th><th>Role</th><th>Active</th><th>Created</th></tr></thead><tbody id="roles"></tbody></table></div>
+</section>
+<section class="panel" id="executions">
+  <div class="section-head"><div><div class="eyebrow">ORDER LIFECYCLE</div><h2>Tracked executions</h2></div><button onclick="reconcile()">Reconcile broker</button></div>
+  <div class="table-wrap"><table><thead><tr><th>Time</th><th>Symbol</th><th>Side</th><th>Requested</th><th>Filled</th><th>Avg price</th><th>Mode</th><th>Status</th></tr></thead><tbody id="trades"></tbody></table></div>
+</section>
+</main>
+</div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+function esc(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;')}
+function token(){return sessionStorage.getItem('ait_admin_access_token')||''}
+function headers(){const h={'Content-Type':'application/json'};if(token())h['Authorization']='Bearer '+token();const legacy=sessionStorage.getItem('ait_admin_token')||'';if(!token()&&legacy)h['X-Admin-Token']=legacy;const at=sessionStorage.getItem('ait_approver_token')||$('approverToken')?.value||'';if(at)h['X-Approver-Token']=at;return h}
+async function api(path,opts={}){const r=await fetch(path,{...opts,headers:{...headers(),...(opts.headers||{})}});const text=await r.text();let j={};try{j=JSON.parse(text)}catch{}if(!r.ok)throw new Error(j.detail||text||'Request failed');return j}
+async function adminLogin(){
+  try{
+    const r=await fetch('/api/admin/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:$('adminEmail').value.trim(),password:$('adminPassword').value})});
+    const j=await r.json(); if(!r.ok) throw new Error(j.detail||j.message||'Administrator login failed');
+    sessionStorage.setItem('ait_admin_access_token',j.access_token);
+    if(j.refresh_token)sessionStorage.setItem('ait_admin_refresh_token',j.refresh_token);
+    if(j.totp_enrolled&&j.mfa_required){
+      const st=await api('/api/admin/auth/mfa/status'); window.adminMfaFactorId=st.factor_ids?.[0]||null;
+      if(!window.adminMfaFactorId)throw new Error('No verified Google Authenticator factor is available.');
+      const ch=await api('/api/admin/auth/mfa/challenge',{method:'POST',body:JSON.stringify({factor_id:window.adminMfaFactorId})});
+      window.adminMfaChallengeId=ch.id; $('adminMfaBox').style.display='block'; $('adminMfaVerifyBtn').style.display='inline-block'; $('authState').textContent='Enter the 6-digit Google Authenticator code.';
+    }else if(j.mfa_required){$('authState').textContent='Enroll Google Authenticator before administrator access is granted.';}else{refresh();loadWithdrawals();loadRoles()}
+  }catch(e){$('authState').textContent='Admin sign-in: '+e.message}
+}
+async function adminEnroll(){
+  try{
+    if(!token())throw new Error('Sign in first.');
+    const d=await api('/api/admin/auth/mfa/enroll',{method:'POST',body:'{}'});
+    $('output').textContent='Scan this Google Authenticator QR code with your administrator device.\nManual secret: '+(d.totp?.secret||'unavailable');
+    if(d.totp?.qr_code){const w=window.open('','_blank','width=420,height=520');w.document.write('<title>Atlas Admin Authenticator</title><p>Scan with Google Authenticator, then return to Atlas.</p><img style="max-width:360px" src="data:image/svg+xml;charset=utf-8,'+encodeURIComponent(d.totp.qr_code)+'"><p>Manual secret: '+esc(d.totp.secret||'unavailable')+'</p>');}
+  }catch(e){$('authState').textContent='Authenticator enrollment: '+e.message}
+}
+async function adminMfaVerify(){
+  const code=$('adminMfaCode').value.trim();
+  if(!/^[0-9]{6}$/.test(code)){ $('authState').textContent='Enter the 6-digit Google Authenticator code.'; return }
+  try{
+    const d=await api('/api/admin/auth/mfa/verify',{method:'POST',body:JSON.stringify({factor_id:window.adminMfaFactorId,challenge_id:window.adminMfaChallengeId,code})});
+    if(d.access_token)sessionStorage.setItem('ait_admin_access_token',d.access_token);
+    window.adminMfaChallengeId=null; $('adminMfaBox').style.display='none'; $('adminMfaVerifyBtn').style.display='none'; $('adminMfaCode').value=''; $('authState').textContent='Administrator AAL2 session active.'; refresh(); loadWithdrawals(); loadRoles();
+  }catch(e){window.adminMfaChallengeId=null;$('authState').textContent='Authenticator verification: '+e.message}
+}
+function req(){return {asset:$('asset').value,symbol:$('symbol').value.trim(),exchange:$('exchange').value.trim(),timeframe:$('tf').value,days:+$('days').value,folds:+$('folds').value,min_train:800}}
+async function loadWithdrawals(){
+  try{
+    const [summary,rows]=await Promise.all([api('/api/admin/withdrawals/summary'),api('/api/admin/withdrawals?status='+encodeURIComponent($('wdFilter').value))]);
+    $('wdPending').textContent=summary.pending_count;
+    $('wdPendingAmount').textContent='$'+Number(summary.pending_amount||0).toLocaleString(undefined,{maximumFractionDigits:2});
+    $('wdApproved').textContent=summary.approved_count;
+    $('wdApprovedAmount').textContent=Number(summary.approved_amount||0).toLocaleString(undefined,{maximumFractionDigits:2})+' USDT reserved';
+    $('wdInFlight').textContent=summary.in_flight_count;
+    $('wdRejected').textContent=summary.rejected_count;
+    $('withdrawals').innerHTML=rows.map(x=>{
+      const canApprove=x.status==='PENDING'||x.status==='PARTIALLY_APPROVED';
+      const action=canApprove?`<button onclick="approveWithdrawal(${x.id})">Approve</button><button class="danger" onclick="rejectWithdrawal(${x.id})">Reject</button>`:(x.status==='APPROVED'?`<button onclick="executeWithdrawal(${x.id})">Execute</button>`:(x.status==='SUBMITTED'||x.status==='UNKNOWN'?`<button onclick="reconcileWithdrawal(${x.id})">Reconcile</button>`:'—'));
+      return `<tr><td>${esc(x.request_id)}</td><td><b>${esc(x.customer_email||'Customer '+(x.customer_id||x.account_ref))}</b><small class="muted"> #${esc(x.customer_id||x.account_ref)}</small></td><td>${Number(x.amount).toLocaleString()} ${esc(x.currency)}</td><td>${esc(x.destination_masked)}</td><td>${Number(x.risk_score).toFixed(2)} ${x.risk_flags?.length?'<span class="tag">FLAGGED</span>':''}</td><td>${x.approval_count}/${x.required_approvals}</td><td><span class="tag">${esc(x.status)}</span></td><td>${action}</td></tr>`;
+    }).join('');
+  }catch(e){$('output').textContent='Withdrawal queue: '+e.message}
+}
+async function approveWithdrawal(id){
+  const admin=$('adminId').value.trim(); sessionStorage.setItem('ait_approver_token',$('approverToken').value||''); if(!admin){$('output').textContent='Enter an Admin ID first.';return}
+  try{const reason=prompt('Approval note (optional):','');const j=await api('/api/admin/withdrawals/'+id+'/approve',{method:'POST',body:JSON.stringify({admin_id:admin,reason:reason||''})});$('output').textContent=JSON.stringify(j,null,2);loadWithdrawals()}catch(e){$('output').textContent='Approval failed: '+e.message}
+}
+async function executeWithdrawal(id){
+  const operator=$('releaseId').value.trim(); const release=$('releaseToken').value||''; const signature=$('releaseSignature').value.trim()||null;
+  if(!operator||!release){$('output').textContent='Release operator ID and token are required.';return}
+  try{const j=await api('/api/admin/withdrawals/'+id+'/release',{method:'POST',headers:{'X-Release-Token':release},body:JSON.stringify({operator_id:operator,signature})});$('output').textContent=JSON.stringify(j,null,2);loadWithdrawals()}catch(e){$('output').textContent='Execution failed: '+e.message}
+}
+async function reconcileWithdrawal(id){
+  const operator=$('releaseId').value.trim(); const release=$('releaseToken').value||'';
+  if(!operator||!release){$('output').textContent='Release operator ID and token are required.';return}
+  try{const j=await api('/api/admin/withdrawals/'+id+'/reconcile',{method:'POST',headers:{'X-Release-Token':release},body:JSON.stringify({operator_id:operator})});$('output').textContent=JSON.stringify(j,null,2);loadWithdrawals()}catch(e){$('output').textContent='Reconciliation failed: '+e.message}
+}
+async function rejectWithdrawal(id){
+  const admin=$('adminId').value.trim(); sessionStorage.setItem('ait_approver_token',$('approverToken').value||''); if(!admin){$('output').textContent='Enter an Admin ID first.';return}
+  const reason=prompt('Required rejection reason:',''); if(!reason?.trim())return;
+  try{const j=await api('/api/admin/withdrawals/'+id+'/reject',{method:'POST',body:JSON.stringify({admin_id:admin,reason})});$('output').textContent=JSON.stringify(j,null,2);loadWithdrawals()}catch(e){$('output').textContent='Rejection failed: '+e.message}
+}
+
+async function loadRoles(){try{const rows=await api('/api/admin/security/roles');$('roles').innerHTML=rows.map(r=>`<tr><td>${esc(r.auth_user_id)}</td><td>${esc(r.role)}</td><td>${r.active?'YES':'NO'}</td><td>${esc(r.created_at||'')}</td></tr>`).join('')||'<tr><td colspan="4">No database role assignments. Explicitly allowlisted admins bootstrap as ADMINISTRATOR until assigned.</td></tr>'}catch(e){$('roles').innerHTML='<tr><td colspan="4">Role management requires ADMINISTRATOR: '+esc(e.message)+'</td></tr>'}}
+async function saveRole(){const uid=$('roleUserId').value.trim();if(!uid){$('output').textContent='Enter a Supabase Auth user UUID.';return}try{const j=await api('/api/admin/security/roles',{method:'POST',body:JSON.stringify({auth_user_id:uid,role:$('roleName').value,active:$('roleActive').value==='true'})});$('output').textContent=JSON.stringify(j,null,2);loadRoles()}catch(e){$('output').textContent='Role update failed: '+e.message}}
+async function loadMargin(){try{const m=await api('/api/admin/billing/margin?months=1');$('marginRevenue').textContent='$'+Number(m.gross_subscription_revenue||0).toLocaleString(undefined,{maximumFractionDigits:2});$('marginCosts').textContent='$'+Number(m.operating_costs||0).toLocaleString(undefined,{maximumFractionDigits:2});$('marginRef').textContent='$'+Number(m.referral_commissions||0).toLocaleString(undefined,{maximumFractionDigits:2});$('marginPct').textContent=Number(m.contribution_margin_pct||0).toFixed(1)+'%';$('marginProfit').textContent='Contribution $'+Number(m.contribution_profit||0).toLocaleString(undefined,{maximumFractionDigits:2});}catch(e){$('output').textContent='Margin: '+e.message}}
+async function refresh(){try{const s=await api('/api/state');$('mode').textContent=s.mode;$('equity').textContent='$'+Number(s.equity).toLocaleString(undefined,{maximumFractionDigits:2});$('pnl').textContent=`Realized ${s.realized_pnl.toFixed(2)} · Unrealized ${s.unrealized_pnl.toFixed(2)}`;$('dd').textContent=(s.drawdown*100).toFixed(2)+'%';$('daily').textContent='Daily loss '+(s.daily_loss*100).toFixed(2)+'%';$('engine').textContent=s.live_enabled?'LIVE':'PAPER';$('live').textContent='Live switch '+(s.live_enabled?'ON':'OFF');$('kill').textContent=s.kill_switch?'HALTED':'ARMED';$('positions').textContent='Positions '+s.open_positions.length;let t=await api('/api/trades');$('trades').innerHTML=t.map(x=>`<tr><td>${esc(new Date(x.created_at).toLocaleString())}</td><td>${esc(x.symbol)}</td><td>${esc(x.side)}</td><td>${Number(x.requested_quantity).toFixed(6)}</td><td>${Number(x.filled_quantity).toFixed(6)}</td><td>${Number(x.average_fill_price||x.requested_price).toFixed(6)}</td><td>${esc(x.mode)}</td><td><span class="tag">${esc(x.status)}</span></td></tr>`).join('')}catch(e){$('output').textContent=e.message}}
+async function run(path,body=req()){ $('output').textContent='Working…';try{const j=await api(path,{method:'POST',body:JSON.stringify(body)});$('output').textContent=JSON.stringify(j,null,2);refresh()}catch(e){$('output').textContent='ERROR: '+e.message}}
+function train(){run('/api/train')} function backtest(){run('/api/backtest')} function strategyBacktest(){run('/api/strategy/backtest')} function backtestAll(){run('/api/research/backtest-all')} function aiReview(){run('/api/research/review')} function paperSignals(){run('/api/research/paper-signals')} function signal(){run('/api/signal')} function strategySignal(){run('/api/strategy/signal')} function paperStep(){run('/api/paper/step')}
+async function reconcile(){run('/api/reconcile',req())}
+async function halt(){try{$('output').textContent=JSON.stringify(await api('/api/risk/kill',{method:'POST'}),null,2);refresh()}catch(e){$('output').textContent=e.message}}
+async function resetRisk(){try{$('output').textContent=JSON.stringify(await api('/api/risk/reset',{method:'POST'}),null,2);refresh()}catch(e){$('output').textContent=e.message}}
+async function disableLive(){try{$('output').textContent=JSON.stringify(await api('/api/live/disable',{method:'POST'}),null,2);refresh()}catch(e){$('output').textContent=e.message}}
+if(token())$('authState').textContent='Admin session present; verify Authenticator if prompted.';refresh();loadWithdrawals();loadRoles();loadMargin();setInterval(refresh,5000);setInterval(loadWithdrawals,10000)
+</script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+name: atlasrisk-ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test-and-scan:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: atlasrisk_test
+          POSTGRES_USER: atlas
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U atlas -d atlasrisk_test"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+      redis:
+        image: redis:7.4
+        ports: ["6379:6379"]
+    env:
+      ENVIRONMENT: test
+      DATABASE_URL: postgresql+asyncpg://atlas:postgres@localhost:5432/atlasrisk_test
+      REDIS_URL: redis://localhost:6379/0
+      SECRET_KEY: ci-only
+      APP_ENCRYPTION_KEY: ci-only
+      SUPABASE_URL: https://example.supabase.co
+      SUPABASE_JWKS_URL: https://example.supabase.co/auth/v1/.well-known/jwks.json
+      FORWARDED_ALLOW_IPS: 127.0.0.1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: pip install -r requirements-dev.txt
+      - run: alembic upgrade head
+      - run: python -m compileall -q app
+      - run: pytest -q
+      - run: bandit -q -r app -x tests
+      - run: pip-audit -r requirements.txt
