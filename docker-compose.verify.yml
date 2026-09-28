@@ -1,0 +1,31 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: trading
+      POSTGRES_USER: trader
+      POSTGRES_PASSWORD: trader_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trader -d trading"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "127.0.0.1:55432:5432"
+
+  verify:
+    build:
+      context: .
+      dockerfile: Dockerfile.verify
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+asyncpg://trader:trader_test@postgres:5432/trading
+      PAPER_TRADING: "true"
+      LIVE_TRADING_ENABLED: "false"
+      BROKER_SANDBOX: "true"
+      BACKGROUND_RECONCILIATION_ENABLED: "false"
+      ADMIN_TOKEN: verify-only-token
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["bash", "scripts/verify_release.sh"]

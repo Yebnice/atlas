@@ -1,0 +1,61 @@
+services:
+  redis:
+    image: redis:8-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: trading
+      POSTGRES_USER: trader
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trader -d trading"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  trading-app:
+    build: .
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql+asyncpg://trader:${POSTGRES_PASSWORD}@postgres:5432/trading
+      PAPER_TRADING: "true"
+      LIVE_TRADING_ENABLED: "false"
+      BROKER_SANDBOX: "true"
+      REDIS_URL: redis://redis:6379/0
+      DISTRIBUTED_RATE_LIMIT_REQUIRED: "true"
+      DOCS_ENABLED: "false"
+    env_file: .env.production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - trading-data:/app/data
+      - trading-models:/app/models
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+
+volumes:
+  postgres-data:
+  trading-data:
+  trading-models:
